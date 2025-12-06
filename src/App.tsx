@@ -1,35 +1,77 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from "react";
+import AudioUploader from "./components/AudioUploader/AudioUploader";
+import { AudioPlayer } from "./components/AudioPlayer/AudioPlayer";
+import { Waveform } from "./components/Waveform/Waveform";
+import { TranscriptionViewer } from "./components/Transcription/TranscriptionViewer";
+import { useAudio } from "./hooks/useAudio";
+import { useTranscription } from "./hooks/useTranscription";
+import { formatTime } from "./utils/timeFormatter";
+import styled from "styled-components";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+    const { fileUrl, duration, loadAudio, file } = useAudio();
+    const { transcribe, loading: transcribing, result } = useTranscription();
+    const [transcript, setTranscript] = useState<string>("");
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    const handleFile = (file: File) => {
+        loadAudio(file);
+    };
+
+    const handleTranscribe = async () => {
+        if (!file) return;
+        const res = await transcribe(file);
+        setTranscript(res.text);
+    };
+
+    return (
+        <DivMain>
+            <header>
+                <h1>Musical Analyzer — Audio → Transcription</h1>
+            </header>
+
+            <main>
+                <section className="uploader">
+                    <AudioUploader onFileSelected={handleFile} />
+                </section>
+
+                <section className="player">
+                    <AudioPlayer fileUrl={fileUrl} />
+                    <div className="metadata">
+                        <strong>Duration:</strong>
+                        <span>{duration ? formatTime(duration) : "—"}</span>
+                    </div>
+                </section>
+
+                <section className="waveform">
+                    <Waveform fileUrl={fileUrl} />
+                </section>
+
+                <section className="transcription">
+                    <button
+                        onClick={handleTranscribe}
+                        disabled={!file || transcribing}
+                    >
+                        {transcribing ? "Transcribing…" : "Transcribe Audio"}
+                    </button>
+
+                    <TranscriptionViewer text={transcript || result.text} />
+                </section>
+            </main>
+
+            <footer>
+                <p>
+                    Note: transcription in this starter is a mock. To use a real
+                    model, swap the service in{" "}
+                    <code>src/services/speechToText.ts</code> with a server-side
+                    endpoint.
+                </p>
+            </footer>
+        </DivMain>
+    );
 }
 
-export default App
+const DivMain = styled.div`
+    display: flex;
+    flex-direction: column;
+    margin: 1em;
+`;
